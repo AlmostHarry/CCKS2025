@@ -53,9 +53,10 @@ class BERTClassifier(nn.Module):
 
         # 分类器
         self.classifier = nn.Sequential(
-            nn.Dropout(0.3),
+            nn.Dropout(0.5),  # 增加dropout概率
             nn.Linear(self.config.hidden_size, 256),
             nn.ReLU(),
+            nn.Dropout(0.3),  # 添加额外dropout层
             nn.Linear(256, 1)
         )
 
