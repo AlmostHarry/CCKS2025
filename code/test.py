@@ -8,7 +8,7 @@ from transformers import BertTokenizer
 def predict_test(test_file, model_ckpt, tokenizer_path, output_file,
                  max_len=256, batch_size=16, device='cuda'):
     """
-    对无标签测试集进行预测并保存结果
+    对无标签测试集进行预测并保存结果，将概率最高的前1400个样本设置为1，其余设置为0
     """
     # 1. 加载BERT tokenizer - 使用本地路径
     tokenizer = BertTokenizer.from_pretrained(tokenizer_path)
@@ -27,18 +27,22 @@ def predict_test(test_file, model_ckpt, tokenizer_path, output_file,
     model.to(device)
     model.eval()
 
-    # 5. 预测并保存结果
-    predictions = []
+    # 5. 预测并保存概率
+    probabilities = []
     with torch.no_grad():
         for batch in test_loader:
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
 
             outputs = model(input_ids, attention_mask)
-            preds = torch.round(torch.sigmoid(outputs)).cpu().numpy()
-            predictions.extend(preds.astype(int).tolist())
+            probs = torch.sigmoid(outputs).cpu().numpy()
+            probabilities.extend(probs.flatten().tolist())
 
-    # 保存结果
+    # 6. 将概率最高的前1400个设置为1，其余为0
+    sorted_indices = sorted(range(len(probabilities)), key=lambda i: probabilities[i], reverse=True)
+    predictions = [1 if i in sorted_indices[:1400] else 0 for i in range(len(probabilities))]
+
+    # 7. 保存结果
     with open(output_file, 'w', encoding='utf-8') as f:
         for pred in predictions:
             f.write(f"{pred}\n")
